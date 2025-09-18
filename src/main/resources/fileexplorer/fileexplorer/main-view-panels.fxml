@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.SplitPane?>
+<?import javafx.scene.layout.AnchorPane?>
+
+<SplitPane dividerPositions="0.4999999999999999" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/24.0.1">
+  <items>
+    <AnchorPane prefHeight="1500" prefWidth="1020">
+      <fx:include source="panels.fxml"/>
+    </AnchorPane>
+    <AnchorPane prefHeight="1500" prefWidth="1020">
+      <fx:include source="panels.fxml"/>
+    </AnchorPane>
+  </items>
+</SplitPane>
