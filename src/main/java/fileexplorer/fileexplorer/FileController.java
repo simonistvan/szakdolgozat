@@ -23,7 +23,11 @@ public class FileController{
     @FXML ComboBox<Disk> rootsMenu;
     @FXML TextArea currentPath;
     @FXML Button goBack;
-    @FXML ListView<Folder> folderList;
+    @FXML Button copyButton;
+    @FXML Button deleteButton;
+    @FXML Button renameButton;
+    @FXML Button moveButton;
+    @FXML ListView<File> folderList;
     @FXML ListView<File> fileList;
 
     @FXML
@@ -46,10 +50,19 @@ public class FileController{
 
     @FXML
     private void goBack(MouseEvent event){
-        currentDir = currentDir.getParentFile();
-        loadFolders(currentDir);
-        currentPath.setText(currentDir.getPath());
-        fileList.getItems().clear();
+        if(currentDir.getParent() != null){
+            currentDir = currentDir.getParentFile();
+            loadFolders(currentDir);
+            currentPath.setText(currentDir.getPath());
+            fileList.getItems().clear();
+        }
+        else{
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Error");
+            alert.setHeaderText(null);
+            alert.setContentText("You can't change directory from the root.");
+            alert.show();
+        }
     }
 
 
@@ -62,12 +75,12 @@ public class FileController{
         }
 
         rootsMenu.getSelectionModel().selectFirst();
-        currentDir = new File(rootsMenu.getSelectionModel().getSelectedItem().toString());
+        currentDir = new File(rootsMenu.getSelectionModel().getSelectedItem().getPath());
         currentPath.setText(currentDir.getPath());
         loadFolders(currentDir);
 
        folderList.setOnMouseClicked((MouseEvent event) -> {
-           Folder selectedFolder = folderList.getSelectionModel().getSelectedItem();
+           File selectedFolder = folderList.getSelectionModel().getSelectedItem();
            if (selectedFolder == null) return;
 
            File selectedFile = new File(selectedFolder.getPath());
@@ -83,17 +96,32 @@ public class FileController{
                if (selectedFile.isDirectory()) {
                    fileList.getItems().clear();
                    File[] files = selectedFile.listFiles();
-                   if (files != null) {
-                       for (File f : files) {
-                            fileList.getItems().add(f);
+                   if(files == null) return;
+                   List<File> foldersSort = new  ArrayList<>();
+                   List<File> filesSort = new ArrayList<>();
+
+                   for (File file : files) {
+                       if(file.isDirectory()){
+                           foldersSort.add(file);
+                       }
+                       else{
+                           filesSort.add(file);
                        }
                    }
+
+                   foldersSort.sort((a,b)->a.getName().compareToIgnoreCase(b.getName()));
+                   filesSort.sort((a,b)->a.getName().compareToIgnoreCase(b.getName()));
+
+                   List<File> allFiles = new   ArrayList<>();
+                   allFiles.addAll(foldersSort);
+                   allFiles.addAll(filesSort);
+                   fileList.getItems().addAll(allFiles);
                }
            }
        });
 
-       folderList.setCellFactory(id -> new ListCell<Folder>() {
-           protected void updateItem(Folder file, boolean empty) {
+       folderList.setCellFactory(id -> new ListCell<File>() {
+           protected void updateItem(File file, boolean empty) {
                super.updateItem(file, empty);
                if (empty || file == null) {
                    setText(null);
@@ -169,25 +197,37 @@ public class FileController{
 
         if(currentDir != null && !currentDir.getPath().isEmpty()){
             File[] files = currentDir.listFiles();
-            if(files != null){
-                    ObservableList<File> file_sort = FXCollections.observableArrayList();
-                ObservableList<Folder> folder_sort = FXCollections.observableArrayList();
-                for(File f : files){
-                    if(f.isDirectory()){
-                        folder_sort.add(new Folder(f.getPath(), f.getName()));
+            if(files!= null){
+                List<File> foldersSort = new  ArrayList<>();
+                List<File> filesSort = new ArrayList<>();
+
+                for (File file : files) {
+                    if(file.isDirectory()){
+                        foldersSort.add(file);
                     }
-                    else if(f.isFile()){
-                        file_sort.add(f);
+                    else{
+                        filesSort.add(file);
                     }
                 }
 
-                FXCollections.sort(file_sort, (a,b)->a.getName().compareToIgnoreCase(b.getName()));
-                FXCollections.sort(folder_sort, (a,b)->a.getName().compareToIgnoreCase(b.getName()));
+                foldersSort.sort((a,b)->a.getName().compareToIgnoreCase(b.getName()));
+                filesSort.sort((a,b)->a.getName().compareToIgnoreCase(b.getName()));
 
-                folderList.getItems().addAll(folder_sort);
-                fileList.getItems().addAll(file_sort);
+                List<File> allFiles = new   ArrayList<>();
+                allFiles.addAll(foldersSort);
+                allFiles.addAll(filesSort);
 
+                folderList.getItems().addAll(allFiles);
             }
         }
+    }
+
+    public List<File> getSelectedFiles(){
+        List<File> files = new ArrayList<>(folderList.getSelectionModel().getSelectedItems());
+        List<File> filesreturn = new ArrayList<>();
+        for(File f : files){
+            filesreturn.add(new File(f.getPath()));
+        }
+        return filesreturn;
     }
 }

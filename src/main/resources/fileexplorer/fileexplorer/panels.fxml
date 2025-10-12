@@ -6,18 +6,19 @@
 <?import javafx.scene.control.TextArea?>
 <?import javafx.scene.layout.AnchorPane?>
 
-<AnchorPane xmlns="http://javafx.com/javafx/24.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="fileexplorer.fileexplorer.FileController">
+<AnchorPane xmlns="http://javafx.com/javafx/8.0.171" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="fileexplorer.fileexplorer.FileController">
     <children>
         <ComboBox fx:id="rootsMenu" onAction="#onSelected" prefHeight="38.0" prefWidth="58.0" AnchorPane.leftAnchor="10.0" AnchorPane.topAnchor="10.0" />
         <TextArea fx:id="currentPath" onMouseClicked="#selectFolder" prefHeight="39.0" AnchorPane.leftAnchor="80.0" AnchorPane.rightAnchor="80.0" AnchorPane.topAnchor="10.0" />
         <Button fx:id="goBack" onMouseClicked="#goBack" prefHeight="39.0" text="..." AnchorPane.rightAnchor="10.0" AnchorPane.topAnchor="10.0" />
 
         <ListView fx:id="folderList" AnchorPane.bottomAnchor="350.0" AnchorPane.leftAnchor="10.0" AnchorPane.rightAnchor="10.0" AnchorPane.topAnchor="60.0" />
-        <ListView fx:id="fileList" layoutX="10.0" layoutY="537.0" prefHeight="375.0" prefWidth="620.0" AnchorPane.bottomAnchor="-41.0" AnchorPane.leftAnchor="10.0" AnchorPane.rightAnchor="10.0" AnchorPane.topAnchor="537.0" />
+        <ListView fx:id="fileList" AnchorPane.bottomAnchor="-41.0" AnchorPane.leftAnchor="10.0" AnchorPane.rightAnchor="10.0" AnchorPane.topAnchor="537.0" />
 
-        <Button fx:id="copyButton" layoutX="11.0" layoutY="927.0" text="Copy" AnchorPane.bottomAnchor="-81.39999999999998" AnchorPane.leftAnchor="11.0" />
-        <Button fx:id="deleteButton" layoutX="80.0" layoutY="927.0" text="Delete" AnchorPane.bottomAnchor="-81.39999999999998" AnchorPane.leftAnchor="80.0" />
-        <Button fx:id="moveButton" layoutX="150.0" layoutY="927.0" text="Move" AnchorPane.bottomAnchor="-81.39999999999998" AnchorPane.leftAnchor="150.0" />
-        <Button fx:id="renameButton" layoutX="214.0" layoutY="927.0" text="Rename" AnchorPane.bottomAnchor="-81.39999999999998" AnchorPane.leftAnchor="214.0" />
+        <Button fx:id="copyButton" text="Copy" AnchorPane.bottomAnchor="-81.0" AnchorPane.leftAnchor="11.0" />
+        <Button fx:id="deleteButton" text="Delete" AnchorPane.bottomAnchor="-81.0" AnchorPane.leftAnchor="80.0" />
+        <Button fx:id="moveButton" text="Move" AnchorPane.bottomAnchor="-81.0" AnchorPane.leftAnchor="150.0" />
+        <Button fx:id="renameButton" text="Rename" AnchorPane.bottomAnchor="-81.0" AnchorPane.leftAnchor="214.0" />
     </children>
 </AnchorPane>
