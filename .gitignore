@@ -36,3 +36,7 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+###tokenek
+/src/main/resources/credentials.json
+/tokens/StoredCredential

@@ -3,16 +3,13 @@ package fileexplorer.fileexplorer;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.control.Alert;
-import javafx.scene.control.ButtonType;
 import javafx.scene.control.SelectionMode;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.layout.AnchorPane;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 
 public class MainController {
@@ -38,228 +35,230 @@ public class MainController {
         rightController.folderList.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         leftController.folderList.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 
-
-        leftController.copyButton.setOnAction(e ->
-                {
-                    try {
-                        copyFunction(leftController.getSelectedFiles(), rightController.currentDir);
-                    } catch (IOException ex) {
-                        throw new RuntimeException(ex);
-                    }
-                }
-        );
-
         rightController.copyButton.setOnAction(e -> {
-            try{
-                copyFunction(rightController.getSelectedFiles(), leftController.currentDir);
+            try {
+                copyFunction(
+                        rightController,
+                        rightController.getSelectedFiles(),
+                        leftController.currentDir,
+                        leftController
+                );
+            } catch (IOException ex) {
+                throw new RuntimeException(ex);
             }
-            catch (IOException ex){
+        });
+
+        leftController.copyButton.setOnAction(e -> {
+            try {
+                copyFunction(
+                        leftController,
+                        leftController.getSelectedFiles(),
+                        rightController.currentDir,
+                        rightController
+                );
+            } catch (IOException ex) {
                 throw new RuntimeException(ex);
             }
         });
 
         rightController.deleteButton.setOnAction(e -> {
-            try{
-                deleteFunction(rightController.getSelectedFiles());
-            }
-            catch (IOException ex){
+            try {
+                deleteFunction(rightController ,rightController.getSelectedFiles());
+            } catch (IOException ex) {
                 throw new RuntimeException(ex);
             }
         });
 
         leftController.deleteButton.setOnAction(e -> {
-            try{
-                deleteFunction(leftController.getSelectedFiles());
-            }
-            catch (IOException ex){
+            try {
+                deleteFunction(leftController ,leftController.getSelectedFiles());
+            } catch (IOException ex) {
                 throw new RuntimeException(ex);
             }
         });
 
         leftController.renameButton.setOnAction(e -> {
-            File f = leftController.folderList.getSelectionModel().getSelectedItem();
-            try{
-                renameFunction(f);
-            }
-            catch(IOException ex){
-                throw new RuntimeException(ex);
+            VirtualFile vf = leftController.folderList.getSelectionModel().getSelectedItem();
+            if (vf != null) {
+                try {
+                    renameFunction(vf, leftController);
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
             }
         });
 
         rightController.renameButton.setOnAction(e -> {
-            File f = rightController.folderList.getSelectionModel().getSelectedItem();
-            try{
-                renameFunction(f);
+            VirtualFile vf = rightController.folderList.getSelectionModel().getSelectedItem();
+            if (vf != null) {
+                try {
+                    renameFunction(vf, rightController);
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
             }
-            catch (IOException ex){
+        });
+
+        leftController.moveButton.setOnAction(e -> {
+            try {
+                moveFunction(leftController.getSelectedFiles(), rightController.currentDir);
+            } catch (IOException ex) {
                 throw new RuntimeException(ex);
             }
         });
 
         rightController.moveButton.setOnAction(e -> {
-            try{
+            try {
                 moveFunction(rightController.getSelectedFiles(), leftController.currentDir);
-            } catch (Exception ex) {
+            } catch (IOException ex) {
                 throw new RuntimeException(ex);
             }
         });
 
-        leftController.moveButton.setOnAction(e -> {
+        leftController.createFolder.setOnAction(e -> leftController.createFolder());
+        rightController.createFolder.setOnAction(e -> rightController.createFolder());
+    }
+
+    public void moveFunction(List<VirtualFile> files, File destDir) throws IOException {
+        for(VirtualFile vf : files){
+            if(!vf.isDrive()) {
+                File f = new File(vf.getPathOrId());
+                copyRecursive(f, destDir);
+                deleteRecursive(f);
+            }
+        }
+    }
+
+    public void renameFunction(VirtualFile vf, FileController controller) throws IOException {
+        TextInputDialog name = new TextInputDialog(vf.getName());
+        name.setTitle("Rename");
+        name.setContentText("Enter the new file name");
+        name.setHeaderText("File Rename");
+
+        Optional<String> result = name.showAndWait();
+
+        if(result.isPresent() && !result.get().trim().isEmpty()){
+            String newName = result.get().trim();
             try{
-                moveFunction(leftController.getSelectedFiles(), rightController.currentDir);
-            }
-            catch (IOException ex){
-                throw new RuntimeException(ex);
-            }
-        });
-    }
+                if(vf.isDrive()){
+                    controller.renameDriveFile(vf.getPathOrId(), newName);
+                }
+                else{
+                    File oldFile = new File(vf.getPathOrId());
+                    Path source = oldFile.toPath();
 
-    public void moveFunction(List<File> files, File destDir) throws IOException {
-        for(File f : files){
-            copyRecursive(f, destDir);
-            deleteRecursive(f);
-        }
-    }
-
-    public void renameFunction(File f) throws IOException {
-        if(f.isDirectory()){
-            TextInputDialog dialog = new TextInputDialog();
-            dialog.setTitle("Rename File");
-            dialog.setHeaderText("Rename File");
-            Optional<String> result = dialog.showAndWait();
-            if (result.isPresent()) {
-                try{
-                    File newDir = new File(f.getParentFile(), result.get().trim());
-                    java.nio.file.Files.copy(f.toPath(), newDir.toPath());
-                    File[] files = f.listFiles();
-                    for(File fi : files ){
-                        copyRecursive(fi, newDir);
+                    //Kiterjesztés megőrzése
+                    String extension = "";
+                    if (!oldFile.isDirectory()) {
+                        int dotIndex = oldFile.getName().lastIndexOf('.');
+                        if (dotIndex != -1) extension = oldFile.getName().substring(dotIndex);
                     }
-                    deleteRecursive(f);
-                }
-                catch (Exception ex){
-                    throw new RuntimeException(ex);
-                }
-            }
-        }
-        else{
-            TextInputDialog dialog = new TextInputDialog();
-            dialog.setTitle("Rename File");
-            dialog.setHeaderText("Rename File");
-            Optional<String> result = dialog.showAndWait();
 
-            String extension = "";
-            int index = f.getName().lastIndexOf('.');
-            if(index != -1){
-                extension = f.getName().substring(index);
-            }
-            if (result.isPresent()) {
-                String name = result.get().trim();
-                try{
-                    File newDir = new File(f.getParent(), name+extension);
-                    java.nio.file.Files.move(f.toPath(), newDir.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                    String finalName = newName.contains(".") ? newName : newName + extension;
+                    Files.move(source, source.resolveSibling(finalName), StandardCopyOption.REPLACE_EXISTING);
                 }
-                catch (Exception ex){
-                    throw new RuntimeException(ex);
-                }
+                controller.refreshView();
+            } catch (IOException ex) {
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setTitle("Error");
+                alert.setHeaderText("Can't rename the file");
+                alert.setContentText(ex.getMessage());
+                alert.showAndWait();
             }
         }
 
-        rightController.loadFolders(rightController.currentDir);
-        leftController.loadFolders(leftController.currentDir);
     }
 
-    public void deleteFunction(List<File> files) throws IOException {
-        for(File f : files){
-            deleteRecursive(f);
+    public void deleteFunction(FileController srcController, List<VirtualFile> files) throws IOException {
+        if(files == null || files.isEmpty()) return;
+
+        boolean localDeleted = false;
+
+        for(VirtualFile vf : files){
+            if(!vf.isDrive()) {
+                File f = new File(vf.getPathOrId());
+                if (f.exists()) {
+                    deleteRecursive(f); // Meghívja a javított rekurziót
+                    localDeleted = true;
+                }
+            }
+        }
+
+        // Lokális frissítés: CSAK EGYSZER a folyamat végén
+        if (localDeleted) {
+            leftController.loadFolders(leftController.currentDir);
+            rightController.loadFolders(rightController.currentDir);
+        }
+
+        List<VirtualFile> driver = files.stream()
+                .filter(VirtualFile::isDrive)
+                .toList();
+
+        if(!driver.isEmpty()){
+            srcController.deleteDriveSmart(driver, srcController::loadGoogleDriveFiles);
         }
     }
 
-    public void copyFunction(List<File> src, File destDir) throws IOException {
-        for(File f : src){
-            copyRecursive(f, destDir);
+    public void copyFunction(
+            FileController srcController,
+            List<VirtualFile> src,
+            File destDir,
+            FileController destController) throws IOException {
+
+        for (VirtualFile vf : src) {
+            if (!vf.isDrive()) {
+                copyRecursive(new File(vf.getPathOrId()), destDir);
+            }
+        }
+
+        List<VirtualFile> driver = src.stream()
+                .filter(VirtualFile::isDrive)
+                .toList();
+
+        if (!driver.isEmpty()) {
+            srcController.copyDriverToLocal(
+                    driver,
+                    destDir,
+                    () -> destController.loadFolders(destDir)  // 🔥 CÉL PANEL
+            );
         }
     }
 
     private void deleteRecursive(File f) throws IOException {
-        if(f.isDirectory() && Objects.requireNonNull(f.listFiles()).length > 0){
+        if (f.isDirectory()) {
             File[] src = f.listFiles();
-            for(File c : src){
-                deleteRecursive(c);
-            }
-            deleteRecursive(f);
-        }
-        else if(f.isDirectory() && Objects.requireNonNull(f.listFiles()).length == 0){
-            try {
-                java.nio.file.Files.delete(f.toPath());
-            }
-            catch (NoSuchFileException ex){
-                Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                alert.setTitle("Error");
-                alert.setHeaderText(null);
-                alert.setContentText("File not found");
-                alert.showAndWait();
+            if (src != null) {
+                for (File c : src) {
+                    deleteRecursive(c);
+                }
             }
         }
-        else{
-            try{
-                java.nio.file.Files.delete(f.toPath());
-            }
-            catch(Exception ex){
-                Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                alert.setTitle("Error");
-                alert.setHeaderText(null);
-                alert.setContentText("File not found");
-                alert.showAndWait();
-            }
-        }
-        rightController.loadFolders(rightController.currentDir);
-        leftController.loadFolders(leftController.currentDir);
 
+        try {
+            java.nio.file.Files.delete(f.toPath());
+        } catch (NoSuchFileException e){}
     }
-   private void copyRecursive(File file, File destDir) throws IOException {
-       File newDir = new File(destDir, file.getName());
 
-       if (file.isDirectory()) {
-           if (newDir.exists()) {
-               Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-               alert.setTitle("Overwrite");
-               alert.setHeaderText(null);
-               alert.setContentText("The folder '" + newDir.getName() + "' already exists. Overwrite?");
+    private void copyRecursive(File file, File destDir) throws IOException {
+        File newFileOrDir = new File(destDir, file.getName());
 
-               Optional<ButtonType> result = alert.showAndWait();
-               if (result.isEmpty() || result.get() == ButtonType.CANCEL) {
-                   return;
-               }
-           }
-
-           newDir.mkdirs();
-
-           File[] files = file.listFiles();
-           if (files != null) {
-               for (File f : files) {
-                   copyRecursive(f, newDir);
-               }
-           }
-
-       } else {
-           try {
-               java.nio.file.Files.copy(
-                       file.toPath(),
-                       newDir.toPath(),
-                       StandardCopyOption.REPLACE_EXISTING
-               );
-           } catch (IOException e) {
-               Alert alertError = new Alert(Alert.AlertType.INFORMATION);
-               alertError.setTitle("Error");
-               alertError.setHeaderText(null);
-               alertError.setContentText("Error during copying the file: " + file.getName());
-               alertError.showAndWait();
-           }
-       }
-
-       rightController.loadFolders(rightController.currentDir);
-       leftController.loadFolders(leftController.currentDir);
-   }
+        if (file.isDirectory()) {
+            if (!newFileOrDir.exists()) {
+                newFileOrDir.mkdirs();
+            }
+            File[] files = file.listFiles();
+            if (files != null) {
+                for (File f : files) {
+                    copyRecursive(f, newFileOrDir);
+                }
+            }
+        } else {
+            java.nio.file.Files.copy(
+                    file.toPath(),
+                    newFileOrDir.toPath(),
+                    StandardCopyOption.REPLACE_EXISTING
+            );
+        }
+    }
 
 }

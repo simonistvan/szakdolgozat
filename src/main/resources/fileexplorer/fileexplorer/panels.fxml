@@ -19,6 +19,8 @@
         <Button fx:id="copyButton" text="Copy" AnchorPane.bottomAnchor="-81.0" AnchorPane.leftAnchor="11.0" />
         <Button fx:id="deleteButton" text="Delete" AnchorPane.bottomAnchor="-81.0" AnchorPane.leftAnchor="80.0" />
         <Button fx:id="moveButton" text="Move" AnchorPane.bottomAnchor="-81.0" AnchorPane.leftAnchor="150.0" />
-        <Button fx:id="renameButton" text="Rename" AnchorPane.bottomAnchor="-81.0" AnchorPane.leftAnchor="214.0" />
+        <Button fx:id="createFolder" text="Create Folder" AnchorPane.bottomAnchor="-81.0" AnchorPane.leftAnchor="150.0" />
+        <Button fx:id="renameButton" text="Rename" AnchorPane.bottomAnchor="-81.0" AnchorPane.leftAnchor="254.0" />
+        <Button fx:id="downoloadButton" text="Szinkronizálás" AnchorPane.bottomAnchor="-81.0" AnchorPane.leftAnchor="284.0"/>
     </children>
 </AnchorPane>
