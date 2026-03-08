@@ -60,9 +60,6 @@ public class GoogleDriveManager {
 
 
     //Törlés a file hozzáférői közül
-
-
-
     public void removeFromFile(String fileId) throws IOException {
 
         // saját email
@@ -252,7 +249,7 @@ public class GoogleDriveManager {
         //Tartalom beállítása
         com.google.api.client.http.FileContent content = new com.google.api.client.http.FileContent(mimeType, srcFile);
 
-        //3. Tartalom küldése.
+        // Tartalom küldése.
         driveService.files().update(fileId, null, content)
                 .setSupportsAllDrives(true)
                 .execute();
@@ -273,6 +270,28 @@ public class GoogleDriveManager {
                 .execute();
 
         return folder.getId();
+    }
+
+    public String uploadFile(java.io.File file, String parentFolderId) throws IOException {
+        com.google.api.services.drive.model.File fileMetadata = new com.google.api.services.drive.model.File();
+        fileMetadata.setName(file.getName());
+
+        if (parentFolderId != null && !parentFolderId.isEmpty()) {
+            fileMetadata.setParents(java.util.Collections.singletonList(parentFolderId));
+        }
+
+        String mimeType = java.nio.file.Files.probeContentType(file.toPath());
+        if (mimeType == null) mimeType = "application/octet-stream";
+
+        com.google.api.client.http.FileContent mediaContent = new com.google.api.client.http.FileContent(mimeType, file);
+
+        com.google.api.services.drive.model.File uploadedFile = driveService.files()
+                .create(fileMetadata, mediaContent)
+                .setFields("id")
+                .setSupportsAllDrives(true)
+                .execute();
+
+        return uploadedFile.getId();
     }
 
 

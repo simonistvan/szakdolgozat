@@ -58,7 +58,8 @@ public class FileController {
             currentFolderId = null;
             driverFolderStack.clear();
             loadGoogleDriveFiles();  // csak listáz
-            downoloadButton.setVisible(false); // ha ez letöltéshez van
+            downoloadButton.setVisible(true);
+            copyButton.setVisible(false);// ha ez letöltéshez van
 
         }
         else if(selected != null && !selected.getPath().isEmpty()){
@@ -320,7 +321,7 @@ public class FileController {
             if (onDone != null) {
                 onDone.run();
             }
-            new Alert(Alert.AlertType.INFORMATION, "Letöltés kész ✅").show();
+            new Alert(Alert.AlertType.INFORMATION, "Letöltés kész").show();
         });
 
         task.setOnFailed(e -> {
@@ -525,5 +526,48 @@ public class FileController {
             }
         });
 
+    }
+
+    public void uploadToDrive(List<VirtualFile> localFiles, String parentId, Runnable onDone) {
+        Task<Void> task = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                if (driveManager == null) driveManager = new GoogleDriveManager();
+
+                for (VirtualFile vf : localFiles) {
+                    File localFile = new File(vf.getPathOrId());
+                    uploadRecursive(localFile, parentId);
+                }
+                return null;
+            }
+        };
+
+        task.setOnSucceeded(e -> {
+            if (onDone != null) onDone.run();
+            new Alert(Alert.AlertType.INFORMATION, "Feltöltés sikeres!").show();
+        });
+
+        task.setOnFailed(e -> task.getException().printStackTrace());
+
+        new Thread(task).start();
+    }
+
+    private void uploadRecursive(File localFile, String driveParentId) throws IOException {
+        if (localFile.isDirectory()) {
+            String newFolderId = driveManager.createDriveFolder(localFile.getName(), driveParentId);
+
+            File[] children = localFile.listFiles();
+            if (children != null) {
+                for (File child : children) {
+                    uploadRecursive(child, newFolderId);
+                }
+            }
+        } else {
+            driveManager.uploadFile(localFile, driveParentId);
+        }
+    }
+
+    public String getCurrentFolderId() {
+        return currentFolderId;
     }
 }

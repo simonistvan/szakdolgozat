@@ -6,6 +6,7 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.SelectionMode;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.layout.AnchorPane;
+import javafx.scene.layout.VBox;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
@@ -23,12 +24,12 @@ public class MainController {
     @FXML
     public void initialize() throws IOException {
         FXMLLoader loaderL = new FXMLLoader(getClass().getResource("panels.fxml"));
-        AnchorPane leftContent = loaderL.load();
+        VBox leftContent = loaderL.load();
         leftController = loaderL.getController();
         leftPanel.getChildren().add(leftContent);
 
         FXMLLoader loaderR = new FXMLLoader(getClass().getResource("panels.fxml"));
-        AnchorPane rightContent = loaderR.load();
+        VBox rightContent = loaderR.load();
         rightController = loaderR.getController();
         rightPanel.getChildren().add(rightContent);
 
@@ -178,13 +179,11 @@ public class MainController {
             if(!vf.isDrive()) {
                 File f = new File(vf.getPathOrId());
                 if (f.exists()) {
-                    deleteRecursive(f); // Meghívja a javított rekurziót
+                    deleteRecursive(f); // Meghívja a rekurziót
                     localDeleted = true;
                 }
             }
         }
-
-        // Lokális frissítés: CSAK EGYSZER a folyamat végén
         if (localDeleted) {
             leftController.loadFolders(leftController.currentDir);
             rightController.loadFolders(rightController.currentDir);
@@ -205,22 +204,37 @@ public class MainController {
             File destDir,
             FileController destController) throws IOException {
 
-        for (VirtualFile vf : src) {
-            if (!vf.isDrive()) {
+        boolean fromDrive = srcController.isDriveMode();
+        boolean toDrive = destController.isDriveMode();
+
+        // Lokális -> lokális
+        if (!fromDrive && !toDrive) {
+            for (VirtualFile vf : src) {
                 copyRecursive(new File(vf.getPathOrId()), destDir);
             }
+            destController.loadFolders(destDir);
         }
 
-        List<VirtualFile> driver = src.stream()
-                .filter(VirtualFile::isDrive)
-                .toList();
-
-        if (!driver.isEmpty()) {
+        // Drive -> Lokális
+        else if (fromDrive && !toDrive) {
             srcController.copyDriverToLocal(
-                    driver,
+                    src,
                     destDir,
-                    () -> destController.loadFolders(destDir)  // 🔥 CÉL PANEL
+                    () -> destController.loadFolders(destDir)
             );
+        }
+
+        // Lokalis -> Drive
+        else if (!fromDrive && toDrive) {
+            destController.uploadToDrive(
+                    src,
+                    destController.getCurrentFolderId(),
+                    () -> destController.loadGoogleDriveFiles()
+            );
+        }
+
+        else if (fromDrive && toDrive) {
+            new Alert(Alert.AlertType.INFORMATION, "Ez a funkció még nincs lekezelve!").show();
         }
     }
 
