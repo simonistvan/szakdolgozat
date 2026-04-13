@@ -1,4 +1,4 @@
-package fileexplorer.fileexplorer;
+package fileexplorer.fileexplorer.provider;
 
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.services.drive.Drive;
@@ -6,6 +6,7 @@ import com.google.api.services.drive.model.*;
 import com.google.api.services.drive.model.Permission;
 import com.google.api.services.drive.model.PermissionList;
 import com.google.api.services.drive.model.About;
+
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -30,7 +31,7 @@ public class GoogleDriveManager {
                 .setPageSize(limit)
                 .setSupportsAllDrives(true)
                 .setIncludeItemsFromAllDrives(true)
-                .setFields("files(id, name, mimeType, parents)")
+                .setFields("files(id, name, mimeType, parents, thumbnailLink)")
                 .execute();
         return result.getFiles();
     }
@@ -164,7 +165,7 @@ public class GoogleDriveManager {
         FileList result = driveService.files().list()
                 .setQ(query)
                 .setPageSize(limit)
-                .setFields("files(id, name, mimeType, parents)")
+                .setFields("files(id, name, mimeType, parents, thumbnailLink)")
                 .execute();
         return result.getFiles();
     }

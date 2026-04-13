@@ -1,10 +1,9 @@
-package fileexplorer.fileexplorer;
-
-import java.io.File;
+package fileexplorer.fileexplorer.model;
 
 public class Disk {
     private final String path;
     private final long totalSpace;
+    private String costumaName;
     private final long freeSpace;
 
     public Disk(String path, long totalSpace, long freeSpace) {
@@ -23,8 +22,12 @@ public class Disk {
         return freeSpace;
     }
 
+    public void setCustomName(String name) {
+        this.costumaName = name;
+    }
+
     @Override
     public String toString() {
-        return path;
+        return (costumaName != null) ? costumaName : (path == null || path.isEmpty()) ? "Root" : path;
     }
 }

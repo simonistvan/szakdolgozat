@@ -1,4 +1,4 @@
-package fileexplorer.fileexplorer;
+package fileexplorer.fileexplorer.provider;
 
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
@@ -49,5 +49,28 @@ public class GoogleDriveAuth {
         return new Drive.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredentials(HTTP_TRANSPORT))
                 .setApplicationName(APPLICATION_NAME)
                 .build();
+    }
+
+    public static void deleteUserToken(String userId) {
+        try {
+            final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
+
+            // Ugyanazt a flow-t kell felépítenünk, mint a bejelentkezésnél
+            InputStream in = GoogleDriveAuth.class.getResourceAsStream("/credentials.json");
+            GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
+
+            GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
+                    HTTP_TRANSPORT, JSON_FACTORY, clientSecrets, SCOPES)
+                    .setDataStoreFactory(new FileDataStoreFactory(new java.io.File(TOKENS_DIRECTORY_PATH)))
+                    .setAccessType("offline")
+                    .build();
+
+            // Itt a varázslat: Csak a konkrét userId-hoz tartozó adatokat töröljük
+            flow.getCredentialDataStore().delete(userId);
+
+            System.out.println("Kijelentkezés: " + userId + " tokenje törölve.");
+        } catch (Exception e) {
+            System.err.println("Hiba a specifikus kijelentkezéskor: " + e.getMessage());
+        }
     }
 }
