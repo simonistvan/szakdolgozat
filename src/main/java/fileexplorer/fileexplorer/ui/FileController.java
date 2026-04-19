@@ -228,7 +228,7 @@ public class FileController {
 
                     if (!newExt.equalsIgnoreCase(orgExt)) {
                         Alert warn = new Alert(Alert.AlertType.CONFIRMATION, "Biztosan meg szeretnéd változtatni a kiterjesztést?", ButtonType.YES, ButtonType.NO);
-                        warn.setHeaderText("Kiterjesztés megváltoztatása");
+                        warn.setHeaderText("Kiterjesztés megváltoztatása.");
                         warn.showAndWait();
 
                         if (warn.getResult() == ButtonType.NO) {
