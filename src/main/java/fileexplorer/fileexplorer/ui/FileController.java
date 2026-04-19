@@ -211,23 +211,33 @@ public class FileController {
         dialog.setContentText("Kérlek, add meg az új nevet:");
 
         dialog.showAndWait().ifPresent(newName -> {
-            if (newName.isEmpty() || newName.equals(selected.getName())) return;
+            String newNameTrim = newName.trim();
+            if (newNameTrim.isEmpty() || newNameTrim.equals(selected.getName())) return;
 
             if (!selected.isFolder()) {
                 String oldName = selected.getName();
-                int lastDot = oldName.lastIndexOf(".");
+                int lastDotOld = oldName.lastIndexOf('.');
+                String orgExt = (lastDotOld != -1) ? oldName.substring(lastDotOld) : "";
 
-                if (lastDot > 0) {
-                    String originalExt = oldName.substring(lastDot);
-                    if (!newName.endsWith(originalExt)) {
-                        Alert warn = new Alert(Alert.AlertType.WARNING,
-                                "Biztos megváltoztatod a kiterjesztést?",
-                                ButtonType.YES, ButtonType.NO);
+                int lastDotNew = newNameTrim.lastIndexOf('.');
+
+                if (lastDotNew == -1) {
+                    newNameTrim += orgExt;
+                } else {
+                    String newExt = newNameTrim.substring(lastDotNew);
+
+                    if (!newExt.equalsIgnoreCase(orgExt)) {
+                        Alert warn = new Alert(Alert.AlertType.CONFIRMATION, "Biztosan meg szeretnéd változtatni a kiterjesztést?", ButtonType.YES, ButtonType.NO);
+                        warn.setHeaderText("Kiterjesztés megváltoztatása");
                         warn.showAndWait();
-                        if (warn.getResult() == ButtonType.NO) return;
+
+                        if (warn.getResult() == ButtonType.NO) {
+                            newNameTrim = newNameTrim.substring(0, lastDotNew) + orgExt;
+                        }
                     }
                 }
             }
+
 
             Task<Void> task = fileService.renameTask(selected, provider, newName);
 
