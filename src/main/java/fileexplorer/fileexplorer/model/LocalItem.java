@@ -1,8 +1,4 @@
-package fileexplorer.fileexplorer.provider;
-
-import fileexplorer.fileexplorer.model.StorageItem;
-
-import java.io.File;
+package fileexplorer.fileexplorer.model;
 
 public record LocalItem(String name, String id, boolean isFolder) implements StorageItem {
 

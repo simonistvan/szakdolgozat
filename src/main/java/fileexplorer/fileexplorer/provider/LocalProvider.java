@@ -1,5 +1,6 @@
 package fileexplorer.fileexplorer.provider;
 
+import fileexplorer.fileexplorer.model.LocalItem;
 import fileexplorer.fileexplorer.model.StorageItem;
 
 import java.awt.*;

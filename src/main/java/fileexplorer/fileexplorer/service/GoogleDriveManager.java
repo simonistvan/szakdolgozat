@@ -1,4 +1,4 @@
-package fileexplorer.fileexplorer.provider;
+package fileexplorer.fileexplorer.service;
 
 import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.services.drive.Drive;
@@ -6,6 +6,7 @@ import com.google.api.services.drive.model.*;
 import com.google.api.services.drive.model.Permission;
 import com.google.api.services.drive.model.PermissionList;
 import com.google.api.services.drive.model.About;
+import fileexplorer.fileexplorer.auth.GoogleDriveAuth;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -295,5 +296,8 @@ public class GoogleDriveManager {
         return uploadedFile.getId();
     }
 
+    public void logout() {
+        this.driveService = null;
+    }
 
 }

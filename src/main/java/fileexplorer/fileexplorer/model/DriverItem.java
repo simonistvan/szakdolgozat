@@ -1,6 +1,4 @@
-package fileexplorer.fileexplorer.provider;
-
-import fileexplorer.fileexplorer.model.StorageItem;
+package fileexplorer.fileexplorer.model;
 
 public record DriverItem(String id, String name, boolean isFolder, String thumbnailUrl) implements StorageItem {
     @Override

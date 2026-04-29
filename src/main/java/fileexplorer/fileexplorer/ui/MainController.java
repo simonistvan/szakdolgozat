@@ -5,7 +5,10 @@ import fileexplorer.fileexplorer.service.FileOperationService;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.scene.Cursor;
 import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.ProgressBar;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.VBox;
 import java.io.IOException;
@@ -51,12 +54,6 @@ public class MainController {
         rightController.moveButton.setOnAction(e -> executeOperation(rightController, leftController, "move"));
     }
 
-    /**
-     * Központi metódus a másolás és áthelyezés kezelésére.
-     * @param src A forrás panel (ahonnan indítjuk)
-     * @param dest A cél panel (ahová másolunk/helyezünk)
-     * @param type "copy" vagy "move"
-     */
     private void executeOperation(FileController src, FileController dest, String type) {
         List<StorageItem> selected = src.getSelectedItems();
         if (selected.isEmpty()) {
@@ -65,28 +62,44 @@ public class MainController {
         }
 
         Task<Void> task;
+        String actionName = "move".equalsIgnoreCase(type) ? "Mozgatás" : "Másolás";
+
         if ("move".equalsIgnoreCase(type)) {
             task = fileService.moveTask(selected, src.getProvider(), dest.getProvider(), dest.getCurrentPathId());
         } else {
             task = fileService.copyTask(selected, src.getProvider(), dest.getProvider(), dest.getCurrentPathId());
         }
 
+        Alert progressDialog = new Alert(Alert.AlertType.INFORMATION);
+        progressDialog.setTitle("Folyamatban...");
+        progressDialog.setHeaderText(actionName + " folyamatban...");
+
+        ProgressBar pb = new ProgressBar();
+        pb.setPrefWidth(300);
+        pb.progressProperty().bind(task.progressProperty());
+        progressDialog.getDialogPane().setContent(pb);
+
+        progressDialog.getButtonTypes().clear();
 
         task.setOnSucceeded(ev -> {
+            progressDialog.getDialogPane().getButtonTypes().add(ButtonType.OK);
+            progressDialog.close();
             dest.loadFiles();
-            if ("move".equalsIgnoreCase(type)) {
-                src.loadFiles();
-            }
-            new Alert(Alert.AlertType.INFORMATION, "Művelet sikeresen befejeződött!").show();
+            if ("move".equalsIgnoreCase(type)) src.loadFiles();
+            new Alert(Alert.AlertType.INFORMATION, "Sikeresen befejeződött!").show();
         });
 
         task.setOnFailed(ev -> {
-            Throwable ex = task.getException();
-            new Alert(Alert.AlertType.ERROR, "Hiba történt: " + ex.getMessage()).show();
+            progressDialog.getDialogPane().getButtonTypes().add(ButtonType.OK);
+            progressDialog.close();
+            new Alert(Alert.AlertType.ERROR, "Hiba: " + task.getException().getMessage()).show();
         });
 
         Thread thread = new Thread(task);
         thread.setDaemon(true);
         thread.start();
+        progressDialog.showAndWait();
+
+
     }
 }

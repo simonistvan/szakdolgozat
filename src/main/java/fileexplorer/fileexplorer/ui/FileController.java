@@ -3,7 +3,7 @@ package fileexplorer.fileexplorer.ui;
 import fileexplorer.fileexplorer.model.Disk;
 import fileexplorer.fileexplorer.model.StorageItem;
 import fileexplorer.fileexplorer.provider.DriverProvider;
-import fileexplorer.fileexplorer.provider.GoogleDriveManager;
+import fileexplorer.fileexplorer.service.GoogleDriveManager;
 import fileexplorer.fileexplorer.provider.LocalProvider;
 import fileexplorer.fileexplorer.provider.StorageProvider;
 import fileexplorer.fileexplorer.service.FileOperationService;
@@ -124,8 +124,10 @@ public class FileController {
         if(isDrive){
             try{
                 if(manager == null) manager = new GoogleDriveManager();
+                String userNamePart = manager.getEmail();
+                String finalName = "Google Drive (" + userNamePart + ")";
                 provider = new DriverProvider(manager);
-                currentPathId = "root";
+                currentPath.setText(finalName);
             }
             catch(Exception e){
                 System.out.println(e.getMessage());
@@ -134,6 +136,7 @@ public class FileController {
         else{
             provider = new LocalProvider();
             currentPathId = selected.getPath();
+            currentPath.setText(currentPathId);
         }
         loadFiles();
     }
@@ -176,7 +179,13 @@ public class FileController {
 
     @FXML
     private void handleLogOut(){
-
+        manager.logout();
+        Disk selected = rootsMenu.getSelectionModel().getSelectedItem();
+        if(selected.toString().contains("Google Drive")){
+            selected.setCostumeName("Google Drive");
+        }
+        rootsMenu.getSelectionModel().select(0);
+        onSelected();
     }
 
 

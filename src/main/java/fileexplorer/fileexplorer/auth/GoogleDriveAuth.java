@@ -1,4 +1,4 @@
-package fileexplorer.fileexplorer.provider;
+package fileexplorer.fileexplorer.auth;
 
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
@@ -65,7 +65,6 @@ public class GoogleDriveAuth {
                     .setAccessType("offline")
                     .build();
 
-            // Itt a varázslat: Csak a konkrét userId-hoz tartozó adatokat töröljük
             flow.getCredentialDataStore().delete(userId);
 
             System.out.println("Kijelentkezés: " + userId + " tokenje törölve.");

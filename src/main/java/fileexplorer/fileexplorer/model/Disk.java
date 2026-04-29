@@ -3,7 +3,7 @@ package fileexplorer.fileexplorer.model;
 public class Disk {
     private final String path;
     private final long totalSpace;
-    private String costumaName;
+    private String costumeName;
     private final long freeSpace;
 
     public Disk(String path, long totalSpace, long freeSpace) {
@@ -15,6 +15,7 @@ public class Disk {
     public String getPath() {
         return path;
     }
+
     public long getTotalSpace() {
         return totalSpace;
     }
@@ -22,12 +23,12 @@ public class Disk {
         return freeSpace;
     }
 
-    public void setCustomName(String name) {
-        this.costumaName = name;
+    public void setCostumeName(String name) {
+        this.costumeName = name;
     }
 
     @Override
     public String toString() {
-        return (costumaName != null) ? costumaName : (path == null || path.isEmpty()) ? "Root" : path;
+        return (costumeName != null) ? costumeName : (path == null || path.isEmpty()) ? "Root" : path;
     }
 }

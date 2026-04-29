@@ -23,4 +23,8 @@ module fileexplorer.fileexplorer {
     opens fileexplorer.fileexplorer.model to javafx.fxml;
     exports fileexplorer.fileexplorer.provider;
     opens fileexplorer.fileexplorer.provider to javafx.fxml;
+    exports fileexplorer.fileexplorer.auth;
+    opens fileexplorer.fileexplorer.auth to javafx.fxml;
+    exports fileexplorer.fileexplorer.service;
+    opens fileexplorer.fileexplorer.service to javafx.fxml;
 }
