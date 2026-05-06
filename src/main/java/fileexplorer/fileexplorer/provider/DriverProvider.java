@@ -40,7 +40,7 @@ public class DriverProvider implements StorageProvider {
 
     @Override
     public void rename(StorageItem storageItem, String newName) throws Exception {
-
+        manager.renameFile(storageItem.getId(), newName);
     }
 
     @Override

@@ -9,6 +9,7 @@ import javafx.scene.control.Label;
 import javafx.scene.layout.VBox;
 
 import java.awt.*;
+import java.net.URISyntaxException;
 
 public class DefaultPreviewer implements FilePreview{
     @Override
@@ -30,10 +31,23 @@ public class DefaultPreviewer implements FilePreview{
 
         btn.setOnAction(e->{
             try{
-                Desktop.getDesktop().open(new java.io.File(item.getId()));
+                java.io.File localFile = new java.io.File(item.getId());
+                if(localFile.exists()){
+                    Desktop.getDesktop().open(new java.io.File(item.getId()));
+                }
+                else{
+                    String link = "https://drive.google.com/file/d/" + item.getId() + "/view";
+
+                    if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+                        Desktop.getDesktop().browse(new java.net.URI(link));
+                    }
+                }
+
             }
             catch (java.io.IOException e1){
                 e1.printStackTrace();
+            } catch (URISyntaxException ex) {
+                throw new RuntimeException(ex);
             }
         });
 

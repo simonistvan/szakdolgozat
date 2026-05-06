@@ -51,7 +51,7 @@ public class LocalProvider implements StorageProvider {
             throw new Exception("Rendszermappa törlése letiltva: " + pathStr);
         }
 
-        if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.MOVE_TO_TRASH)) {
+        if (Desktop.getDesktop().isSupported(Desktop.Action.MOVE_TO_TRASH)) {
             if (!Desktop.getDesktop().moveToTrash(path.toFile())) {
                 throw new Exception("Lomtárba helyezés sikertelen!");
             }

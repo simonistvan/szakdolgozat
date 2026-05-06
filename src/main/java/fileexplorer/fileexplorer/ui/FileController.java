@@ -126,8 +126,10 @@ public class FileController {
                 if(manager == null) manager = new GoogleDriveManager();
                 String userNamePart = manager.getEmail();
                 String finalName = "Google Drive (" + userNamePart + ")";
+                currentPathId = "Google Drive";
+                currentPath.setText(currentPathId);
                 provider = new DriverProvider(manager);
-                currentPath.setText(finalName);
+                rootsMenu.getSelectionModel().getSelectedItem().setCostumeName("Google Drive - " + finalName);
             }
             catch(Exception e){
                 System.out.println(e.getMessage());
