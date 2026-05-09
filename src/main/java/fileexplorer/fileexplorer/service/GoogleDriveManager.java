@@ -37,6 +37,17 @@ public class GoogleDriveManager {
         return result.getFiles();
     }
 
+    public List<File> listFilesInFolder(String folderId, int limit) throws IOException {
+        // Lekérdezés: csak azok a fájlok, amelyeknek a szülője a folderId
+        String query = "'" + folderId + "' in parents";
+        FileList result = driveService.files().list()
+                .setQ(query)
+                .setPageSize(limit)
+                .setFields("files(id, name, mimeType, parents, thumbnailLink)")
+                .execute();
+        return result.getFiles();
+    }
+
     //E-mail getter
     public String getEmail() throws IOException {
         About about = driveService.about()
@@ -56,7 +67,7 @@ public class GoogleDriveManager {
                 .execute();
 
         boolean owned = Boolean.TRUE.equals(meta.getOwnedByMe());
-        System.out.println("[DELETE] " + meta.getName() + " -> " + (owned ? "ENYÉM (owner)" : "NEM ENYÉM (shared)"));
+        System.out.println("[DELETE] " + meta.getName() + " -> " + (owned ? "Tulajdonos" : "Megosztott"));
         return owned;
     }
 
@@ -92,6 +103,42 @@ public class GoogleDriveManager {
                 .execute();
     }
 
+    public void deleteDriveSmartOne(String fileId) {
+        try {
+            trashShortcutIfExists(fileId);
+            boolean owned = isOwnedByMe(fileId);
+            if (owned) {
+                // owner -> trash
+                com.google.api.services.drive.model.File patch = new com.google.api.services.drive.model.File();
+                patch.setTrashed(true);
+
+                driveService.files()
+                        .update(fileId, patch)
+                        .setSupportsAllDrives(true)
+                        .execute();
+
+                System.out.println("[DELETE] owner -> kukába rakva");
+            } else {
+                // shared -> próbáljuk levenni a saját hozzáférést
+                try {
+                    removeFromFile(fileId);
+                    System.out.println("Állomány törölve!");
+                } catch (GoogleJsonResponseException ex) {
+                    if (ex.getStatusCode() == 403) {
+                        System.out.println("403 policy, nem lehetséges módosítani a jogosultságot.");
+                    } else if (ex.getStatusCode() == 404) {
+                        System.out.println("404 (nincs már hozzáférés / nem létezik)");
+                    } else {
+                        throw ex;
+                    }
+                }
+            }
+
+        } catch (Exception e) {
+            System.err.println("[DELETE] hiba: " + e.getMessage());
+        }
+    }
+
     public boolean trashShortcutIfExists(String targetFileId) throws IOException {
         String q = "mimeType='application/vnd.google-apps.shortcut' and " +
                 "shortcutDetails.targetId='" + targetFileId + "' and trashed=false";
@@ -122,116 +169,6 @@ public class GoogleDriveManager {
         return true;
     }
 
-    public void deleteDriveSmartOne(String fileId) {
-        try {
-            boolean owned = isOwnedByMe(fileId); // <-- EZ kiírja, hogy enyém-e
-
-            if (owned) {
-                // owner -> trash
-                com.google.api.services.drive.model.File patch = new com.google.api.services.drive.model.File();
-                patch.setTrashed(true);
-
-                driveService.files()
-                        .update(fileId, patch)
-                        .setSupportsAllDrives(true)
-                        .execute();
-
-                System.out.println("[DELETE] owner -> kukába rakva");
-            } else {
-                // shared -> próbáljuk levenni a saját hozzáférést
-                try {
-                    removeFromFile(fileId);
-                    System.out.println("[DELETE] shared -> hozzáférés törölve (eltűnik a Drive-odból)");
-                } catch (GoogleJsonResponseException ex) {
-                    if (ex.getStatusCode() == 403) {
-                        System.out.println("[DELETE] shared -> 403 policy, nem engedi a kilépést");
-                    } else if (ex.getStatusCode() == 404) {
-                        System.out.println("[DELETE] shared -> 404 (nincs már hozzáférés / nem létezik)");
-                    } else {
-                        throw ex;
-                    }
-                }
-            }
-
-        } catch (Exception e) {
-            System.err.println("[DELETE] hiba: " + e.getMessage());
-        }
-    }
-
-
-    // 🔹 Adott mappa listázása
-    public List<File> listFilesInFolder(String folderId, int limit) throws IOException {
-        // Lekérdezés: csak azok a fájlok, amelyeknek a szülője a folderId
-        String query = "'" + folderId + "' in parents";
-        FileList result = driveService.files().list()
-                .setQ(query)
-                .setPageSize(limit)
-                .setFields("files(id, name, mimeType, parents, thumbnailLink)")
-                .execute();
-        return result.getFiles();
-    }
-
-    public void downloadFile(String fileId, java.io.File destinationFile) throws IOException {
-        // Lekérjük a fájl metaadatait (hogy megtudjuk, milyen típus)
-        com.google.api.services.drive.model.File fileMetadata =
-                driveService.files().get(fileId).setFields("mimeType, name").execute();
-
-        String mimeType = fileMetadata.getMimeType();
-
-        // Ha Google Docs-típus -> exportálás
-        if (mimeType.startsWith("application/vnd.google-apps.")) {
-            String exportMimeType = null;
-            String extension = "";
-
-            switch (mimeType) {
-                case "application/vnd.google-apps.document":
-                    exportMimeType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-                    extension=".docx";
-                    break;
-                case "application/vnd.google-apps.spreadsheet":
-                    exportMimeType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-                    extension=".xlsx";
-                    break;
-                case "application/vnd.google-apps.presentation":
-                    exportMimeType = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
-                    extension=".pptx";
-                    break;
-                case "application/vnd.google-apps.drawing":
-                    exportMimeType = "image/png";
-                    extension=".png";
-                    break;
-                default:
-                    System.out.println("Nem támogatott Google dokumentum típus: " + mimeType);
-                    return;
-            }
-
-            java.io.File finalFile = destinationFile;
-            if (extension != null && !destinationFile.getName().toLowerCase().endsWith(extension)) {
-                finalFile = new java.io.File(destinationFile.getParent(), destinationFile.getName() + extension);
-            }
-
-            // Exportálás végrehajtása a már kiterjesztéssel rendelkező fájlba
-            try (OutputStream outputStream = new FileOutputStream(finalFile)) {
-                driveService.files()
-                        .export(fileId, exportMimeType)
-                        .executeMediaAndDownloadTo(outputStream);
-            }
-
-            System.out.println("Exportálva: " + finalFile.getName() + " (MIME: " + exportMimeType + ")");
-
-        } else {
-            // Egyéb (valódi bináris) fájlokat közvetlenül letöltünk
-            // Itt nem módosítunk nevet, mert a bináris fájloknak általában van saját kiterjesztésük
-            try (OutputStream outputStream = new FileOutputStream(destinationFile)) {
-                driveService.files()
-                        .get(fileId)
-                        .executeMediaAndDownloadTo(outputStream);
-            }
-
-            System.out.println("Letöltve: " + fileMetadata.getName());
-        }
-    }
-
     public void renameFile(String fileId, String newName) throws IOException{
         File file = new File();
         file.setName(newName);
@@ -241,24 +178,8 @@ public class GoogleDriveManager {
                 .execute();
     }
 
-    public void updateFile(String fileId, java.io.File srcFile) throws IOException {
-        // Meg kell határozni a File típusát
-        String mimeType = java.nio.file.Files.probeContentType(srcFile.toPath());
-        if(mimeType == null){
-            mimeType = "application/octet-stream";
-        }
-
-        //Tartalom beállítása
-        com.google.api.client.http.FileContent content = new com.google.api.client.http.FileContent(mimeType, srcFile);
-
-        // Tartalom küldése.
-        driveService.files().update(fileId, null, content)
-                .setSupportsAllDrives(true)
-                .execute();
-    }
-
     public String createDriveFolder(String folderName, String parentId) throws IOException {
-        com.google.api.services.drive.model.File fileMetadata = new com.google.api.services.drive.model.File();
+        File fileMetadata = new File();
         fileMetadata.setName(folderName);
         fileMetadata.setMimeType("application/vnd.google-apps.folder");
 
@@ -267,34 +188,13 @@ public class GoogleDriveManager {
             fileMetadata.setParents(java.util.Collections.singletonList(parentId));
         }
 
-        com.google.api.services.drive.model.File folder = driveService.files().create(fileMetadata)
+        File folder = driveService.files().create(fileMetadata)
                 .setFields("id")
                 .execute();
 
         return folder.getId();
     }
 
-    public String uploadFile(java.io.File file, String parentFolderId) throws IOException {
-        com.google.api.services.drive.model.File fileMetadata = new com.google.api.services.drive.model.File();
-        fileMetadata.setName(file.getName());
-
-        if (parentFolderId != null && !parentFolderId.isEmpty()) {
-            fileMetadata.setParents(java.util.Collections.singletonList(parentFolderId));
-        }
-
-        String mimeType = java.nio.file.Files.probeContentType(file.toPath());
-        if (mimeType == null) mimeType = "application/octet-stream";
-
-        com.google.api.client.http.FileContent mediaContent = new com.google.api.client.http.FileContent(mimeType, file);
-
-        com.google.api.services.drive.model.File uploadedFile = driveService.files()
-                .create(fileMetadata, mediaContent)
-                .setFields("id")
-                .setSupportsAllDrives(true)
-                .execute();
-
-        return uploadedFile.getId();
-    }
 
     public void logout() {
         this.driveService = null;

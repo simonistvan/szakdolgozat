@@ -60,14 +60,19 @@ public class MainController {
             new Alert(Alert.AlertType.WARNING, "Nincs kijelölt elem!").show();
             return;
         }
+        String destPath = dest.getCurrentPathId();
+
+        String finalDestPath = (destPath == null || destPath.isEmpty() || "Google Drive".equalsIgnoreCase(destPath))
+                ? "root"
+                : destPath;
 
         Task<Void> task;
-        String actionName = "move".equalsIgnoreCase(type) ? "Mozgatás" : "Másolás";
+        String actionName = "move".equalsIgnoreCase(type) ? "Áthelyezés" : "Másolás";
 
         if ("move".equalsIgnoreCase(type)) {
-            task = fileService.moveTask(selected, src.getProvider(), dest.getProvider(), dest.getCurrentPathId());
+            task = fileService.moveTask(selected, src.getProvider(), dest.getProvider(), finalDestPath);
         } else {
-            task = fileService.copyTask(selected, src.getProvider(), dest.getProvider(), dest.getCurrentPathId());
+            task = fileService.copyTask(selected, src.getProvider(), dest.getProvider(), finalDestPath);
         }
 
         Alert progressDialog = new Alert(Alert.AlertType.INFORMATION);

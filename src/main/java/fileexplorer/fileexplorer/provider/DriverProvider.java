@@ -55,9 +55,15 @@ public class DriverProvider implements StorageProvider {
         com.google.api.services.drive.model.File fileMetadata = new com.google.api.services.drive.model.File();
         fileMetadata.setName(name);
 
-        //parentId már egy String, listába lehet pakolni getId() nélkül
-        if (parentId != null && !parentId.isEmpty() && !parentId.equalsIgnoreCase("root")) {
-            fileMetadata.setParents(java.util.Collections.singletonList(parentId));
+        String effectiveParentId = parentId;
+        if (parentId == null || parentId.isEmpty() || parentId.equalsIgnoreCase("Google Drive")) {
+            effectiveParentId = "root";
+        }
+
+        if (!effectiveParentId.equalsIgnoreCase("root")) {
+            fileMetadata.setParents(java.util.Collections.singletonList(effectiveParentId));
+        } else {
+            fileMetadata.setParents(java.util.Collections.singletonList("root"));
         }
 
         com.google.api.client.http.InputStreamContent mediaContent =
@@ -66,6 +72,7 @@ public class DriverProvider implements StorageProvider {
         manager.getDriveService().files()
                 .create(fileMetadata, mediaContent)
                 .setFields("id")
+                .setSupportsAllDrives(true)
                 .execute();
     }
 
