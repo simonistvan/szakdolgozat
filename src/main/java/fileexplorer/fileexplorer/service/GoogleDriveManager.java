@@ -14,17 +14,51 @@ import java.io.OutputStream;
 import java.security.GeneralSecurityException;
 import java.util.List;
 
+
+/**
+ * Ez az osztály felelős a Google Drive API műveleteinek a megvalósításáért.
+ * A program futása során a {@link Drive} példány kerül meghívásra a műveletek elvégzéséhez.
+ * A főbb metódusaia törlés. fájlok listázása, jogosultságok ellenőrzése, hozzáférési jogosultságok visszavonása.
+ *
+ */
 public class GoogleDriveManager {
 
+    /**
+     * Google Drive API műveletek végrehajtásáért felelős példány.
+     */
+
     private Drive driveService;
+
+    /**
+     * Létrehozza a {@code GoogleDriveManager} egy új példányát, és inicializálja
+     * a hozzáférési munkamenetet a {@link GoogleDriveAuth} osztály segítségével.
+     *
+     * @throws IOException Amennyiben az azonosítási tokenek betöltése vagy a hálózati kommunikáció meghiúsul.
+     * @throws GeneralSecurityException Amennyiben a TLS/SSL kontextus vagy a hitelesítési kulcsok feldolgozása biztonsági hibát okoz.
+     */
 
     public GoogleDriveManager() throws IOException, GeneralSecurityException {
         this.driveService = GoogleDriveAuth.getDriveService();
     }
 
+    /**
+     * Visszaadja az authentikált {@link Drive} példányt.
+     * @return az authentikált {@link Drive} pédány, vagy {@code null} ha kijelentkezés történt
+     */
+
     public Drive getDriveService() {
         return driveService;
     }
+
+    /**
+     * Ezzel a metódussal kérdezem le az olyan állományokat a Google Drive szervereiről, amelyek
+     * a gyökérkönyvtárban szerepelnek. Lomtárban tárolt fájlokat nem tölti be.
+     * Azonban a mezőszelekciónak köszönhetően a megosztott meghajtókon szereplő állományokhoz is hozzáfér.
+     *
+     * @param limit a maximálisan lekérdezhető állományszám.
+     * @return A lekérdezett {@link File} objektumok listája.
+     * @throws IOException Hálózati hiba vagy érvénytelen API válasz esetén.
+     */
 
     public List<File> listFilesInRoot(int limit) throws IOException {
         FileList result = driveService.files().list()
@@ -37,8 +71,16 @@ public class GoogleDriveManager {
         return result.getFiles();
     }
 
+    /**
+     * Paraméterként átadott mappa tartalmát listázza ki
+     *
+     * @param folderId kilistázandó mappa azonosítója.
+     * @param limit a maximálisan lekérdezhető állományszám.
+     * @return A megadott mappában lévő {@link File} elemek listája.
+     * @throws IOException IOException Hálózati hiba vagy érvénytelen API válasz esetén.
+     */
+
     public List<File> listFilesInFolder(String folderId, int limit) throws IOException {
-        // Lekérdezés: csak azok a fájlok, amelyeknek a szülője a folderId
         String query = "'" + folderId + "' in parents";
         FileList result = driveService.files().list()
                 .setQ(query)
@@ -48,7 +90,13 @@ public class GoogleDriveManager {
         return result.getFiles();
     }
 
-    //E-mail getter
+    /**
+     * Lekérdezi és visszaadja a jelenleg bejelentkezett felhasználó e-mail címét.
+     *
+     * @return a bejelentkezett felhasználó e-mail címe.
+     * @throws IOException Amennyiben a lekérdezés hibás.
+     */
+
     public String getEmail() throws IOException {
         About about = driveService.about()
                 .get()
@@ -58,7 +106,14 @@ public class GoogleDriveManager {
         return about.getUser().getEmailAddress();
     }
 
-    //Tulajdonosság ellenőrzés
+    /**
+     * Megvizsgálja, hogy a megadott azonosítójú állománynak a bejelentkezett felhasználó a kizárolagos tulajdonos-e.
+     *
+     * @param fileId vizsgálandó fájl azonosítója
+     * @return {@code true}, ha az aktuális felhasználó a tulajdonos; {@code false}, ha az elem megosztott vagy más birtokolja.
+     * @throws IOException Ha az állomány nem található, vagy a metaadatok lekérése meghiúsul.
+     */
+
     public boolean isOwnedByMe(String fileId) throws IOException {
         File meta = driveService.files()
                 .get(fileId)
@@ -71,11 +126,22 @@ public class GoogleDriveManager {
         return owned;
     }
 
+    /**
+     * Eltávolítja a bejelentkezett felhasználó hozzáférését a paraméterben megadott Google Drive fájlról.
+     * A metódus lekéri az aktuális felhasználó e-mail-címét, majd a fájlazonosító alapján
+     * lekérdezi a fájl jogosultságainak listáját. Ezt követően egy szűréssel megkeresi
+     * a listában a bejelentkezett felhasználó e-mail-címéhez tartozó egyéni ({@code "user"})
+     * jogosultságot.
+     * Amennyiben a jogosultsági lista {@code null}, vagy a felhasználó nem szerepel a jogosultak
+     * között, a metódus módosítás nélkül visszatér. Ha a jogosultság megtalálható, a metódus
+     * a jogosultság egyedi azonosítója alapján törli azt a Google Drive API segítségével.
+     *
+     * @param fileId paraméterben átadott, vizsgálandó fájl
+     * @throws IOException a hiba történik a Google Drive API-val való kommunikáció során
+     */
 
-    //Törlés a file hozzáférői közül
     public void removeFromFile(String fileId) throws IOException {
 
-        // saját email
         About about = driveService.about().get()
                 .setFields("user(emailAddress)")
                 .execute();
@@ -103,12 +169,26 @@ public class GoogleDriveManager {
                 .execute();
     }
 
+    /**
+     * Ez a metódus végzi a Google Drive elemek törlését. Mivel Google Drive-on találhatóak megosztott elemek is,
+     * nem csak olyanok, amiket mi hoztunk létre, azaz nem mi vagyunk a kizárólagos tulajdonosai a fájlnak, így ezt
+     * kétféleképpen kell kezelni.
+     * A metóüdus indulásának az elejénél, ha található parancsikon, akkor megpróbálja a lomtárba helyezni ezt.
+     * Ezután egy boolean változóba az isOwnedByMe metódus visszatérési értéke alapján fogja megvizsgálni a tulajdonosi
+     * vagy megoszottsági tulajdonságot.
+     * Amennyiben mi vagyunk a tulajdonosok, akkor a Google Drive a lomtárba helyezi az állományt.
+     * Amennyiben nem mi vagyunk a tulajdonosok, akkor a {@link #removeFromFile(String)} metódus segítségével levesszük a felhasználót a
+     * jogosultak közül kezelve az esetleges 403 és 404 hibákat.
+     * (403: Nincs jogosultság, 404: nem található állomány).
+     *
+     * @param fileId paraméterben átadott, törlendő fájl azonosítója
+     */
+
     public void deleteDriveSmartOne(String fileId) {
         try {
             trashShortcutIfExists(fileId);
             boolean owned = isOwnedByMe(fileId);
             if (owned) {
-                // owner -> trash
                 com.google.api.services.drive.model.File patch = new com.google.api.services.drive.model.File();
                 patch.setTrashed(true);
 
@@ -117,9 +197,8 @@ public class GoogleDriveManager {
                         .setSupportsAllDrives(true)
                         .execute();
 
-                System.out.println("[DELETE] owner -> kukába rakva");
+                System.out.println("A(z) "+ fileId + " a lomtárba lett helyezve.");
             } else {
-                // shared -> próbáljuk levenni a saját hozzáférést
                 try {
                     removeFromFile(fileId);
                     System.out.println("Állomány törölve!");
@@ -138,6 +217,17 @@ public class GoogleDriveManager {
             System.err.println("[DELETE] hiba: " + e.getMessage());
         }
     }
+
+    /**
+     * Paraméterben kapott fájlhoz tartozó parancsikonokat a lomtárba helyezi.
+     * Egy Google Drive API lekérdezést futatt, a megfelelő paraméterezéssel, melynek során
+     * a paraméterben kapott fájlra mutató parancsikonokat a lomtárba helyezi. A lekérdezés a megoszott
+     * meghajtókat is figyelembe veszi a lekérdezés.
+     *
+     * @param targetFileId annak az állománynak az azonosítója, amelyre a parancsikonokat keressük.
+     * @return {@code true} ha találtunk parancsikont és a kukába került; {@code false} amennyiben nem találtunk parancsikont
+     * @throws IOException ha hiba történik a Google Drive API-val való kommunikáció során
+     */
 
     public boolean trashShortcutIfExists(String targetFileId) throws IOException {
         String q = "mimeType='application/vnd.google-apps.shortcut' and " +
@@ -169,6 +259,16 @@ public class GoogleDriveManager {
         return true;
     }
 
+    /**
+     * A paraméterben átadott fájlazonosítójú állományt átnevezi a paraméterben kapott String változó értékére.
+     * A metódus létrehoz egy üres File objektumot, melynek beállítja a paraméterben kapott nevet.
+     * A Google Drive API a {@code files.update} end-pointján keresztül módosítja az állomány nevét.
+     *
+     * @param fileId paraméterben átadott állomány, melynek a nevét szeretnénk módosítani.
+     * @param newName az a String változó, amely tartalmazza az új nevet.
+     * @throws IOException ha hiba történik a Google Drive API-val való kommunikáció során.
+     */
+
     public void renameFile(String fileId, String newName) throws IOException{
         File file = new File();
         file.setName(newName);
@@ -178,12 +278,20 @@ public class GoogleDriveManager {
                 .execute();
     }
 
+    /**
+     * Új mappát hoz létre paraméterben kapott névvel ellátva, a paraméterben kapott elérési útvonalon.
+     *
+     * @param folderName az a String változó, amely tartalmazza az új mappa nevét.
+     * @param parentId az új létrehozandó mappa elérési útvonala
+     * @return a frissen létrehozott Google Drive mappa egyedi azonosítója.
+     * @throws IOException ha hiba történik a Google Drive API-val való kommunikáció során
+     */
+
     public String createDriveFolder(String folderName, String parentId) throws IOException {
         File fileMetadata = new File();
         fileMetadata.setName(folderName);
         fileMetadata.setMimeType("application/vnd.google-apps.folder");
 
-        // Ha a parentId null, a Drive gyökerébe kerül
         if (parentId != null && !parentId.isEmpty()) {
             fileMetadata.setParents(java.util.Collections.singletonList(parentId));
         }
@@ -195,6 +303,10 @@ public class GoogleDriveManager {
         return folder.getId();
     }
 
+
+    /**
+     * Megszünteti az aktív Google Drive API munkamenetet az aktuális példányban.
+     */
 
     public void logout() {
         this.driveService = null;

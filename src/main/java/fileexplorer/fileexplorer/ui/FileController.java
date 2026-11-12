@@ -18,10 +18,27 @@ import java.io.File;
 import java.util.List;
 import java.util.Stack;
 
+/**
+ * Egyetlen fájlkezelő panel felhasználói felületét és interakcióit vezérlő JavaFX kontroller osztály.
+ * Ez az osztály felelős a helyi fájlrendszer és a Google Drive felhőtárhelyei közötti váltásokat {@link StorageProvider},
+ *  a könyvtárstruktúrák megjelenítéséért {@link Stack}, valamint az előnézeti megjelenítését {@link PreviewFactory}.
+ *
+ *  A hosszabb I/O- és hálózati műveleteket (listázás, törlés, átnevezés) háttérszálon futó
+ *  JavaFX {@link Task} példányokon keresztül hajtja végre a felület fagyásának elkerülése érdekében,
+ *  emellett getter metódusokon keresztül biztosítja a panel állapotát a {@code MainController} számára.
+ */
+
 public class FileController {
     @FXML public ComboBox<Disk> rootsMenu;
     @FXML public TextArea currentPath;
-    @FXML public Button goBack, copyButton, deleteButton, moveButton, renameButton, createFolder, logoutButton;
+    @FXML public Button goBack;
+    @FXML public Button copyButton;
+    @FXML
+    private Button deleteButton;
+    @FXML public Button moveButton;
+    @FXML public Button renameButton;
+    @FXML public Button createFolder;
+    @FXML public Button logoutButton;
     @FXML public ListView<StorageItem> folderList;
     @FXML public ListView<StorageItem> fileList;
     private PreviewFactory previewFactory = new PreviewFactory();
@@ -32,6 +49,20 @@ public class FileController {
     private Stack<String> pathStack = new  Stack<>();
     private GoogleDriveManager manager;
 
+
+    /**
+     * Inicializálja a panel grafikus komponenseit és eseménykezelőit az FXML nézet betöltése után.
+     * A metódus először a {@link #mainList()} hívásával konfigurálja a fájllista kijelölési módját
+     * és navigációs eseményeit, majd lekérdezi a rendszer elérhető helyi gyökérkönyvtárait
+     * ({@link File#listRoots()}), feltölti velük a meghajtóválasztó menüt ({@code rootsMenu}),
+     * hozzáadja a {@code "Google Drive"} felhőtárhely opciót, és kiválasztja az első elérhető
+     * meghajtót ({@link #onSelected()}).
+     * Ezt követően kijelölésfigyelőt regisztrál a {@code folderList} listára, amely a kiválasztott
+     * elemet átadja az előnézeti területnek ({@code fileList}), valamint egyedi cellagyárat
+     * állít be a {@code fileList} számára, amely a {@link PreviewFactory} segítségével előállítja
+     * az állományhoz illeszkedő előnézeti komponenst és annak méretét dinamikusan a rendelkezésre
+     * álló helyhez köti.
+     */
     @FXML
     private void initialize() {
         mainList();
@@ -79,6 +110,14 @@ public class FileController {
         });
     }
 
+    /**
+     * Ez a metódus konfigurálja a {@link folderList} megjelenítését.
+     * Engedélyezi a többszörös kijelölést.
+     * Egyedi ikonokat párosít, hogy a felhasználónak jobban átlátható legyen, hogy melyik állomány
+     * egyszerú fájl és melyik a mappa.
+     * Lekezeli a kattintásokat a listán megjelenített elemeken.
+     */
+
     private void mainList(){
         folderList.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
 
@@ -107,6 +146,19 @@ public class FileController {
         });
     }
 
+    /**
+     * Ez a metódus felelős a meghajtólistában történt választások lekezeléséért.
+     * Amennyiben váltás történik, akkor elsősorban az alkalmazás törli az előzményeket az előző meghajtó után.
+     * Ezután egy ellenőrzés következik, hogy a felhasználó a Google Drive meghajtót választotta-e, hiszen ha igen akkor
+     * a kijelentkezési gombot átállítja aktívra, így a felhasználó ki tud jelentkezni majd. Az alkalmazás példányosít egy
+     * {@code GoogleDriveManager} példányt
+     * lekéri a bejelentkezett felhasználó e-mail-címét a menüelem megjelenített nevének
+     * frissítéséhez, és beállítja a {@link DriverProvider} szolgáltatót.
+     * Helyi meghajtó
+     * esetén a {@link LocalProvider} kerül példányosításra a meghajtó gyökérútvonalával.
+     * Végül frissíti az aktuális útvonalmezőt ({@code currentPath}) és elindítja a tartalom
+     * betöltését ({@link #loadFiles()}).
+     */
 
     @FXML
     private void onSelected(){
@@ -143,6 +195,14 @@ public class FileController {
         loadFiles();
     }
 
+    /**
+     * Ez a metódus felelős az aktuális elérési útvonalon tárolt elemek betöltéséért.
+     * Egy háttérszálon futó {@link Task} segítségével lekérdezi az aktív tárhely-szolgáltatótól
+     * a {@link StorageItem} példányokat tároló listát, amely tartalmazza a tárolt állományok
+     * adatait. Sikeres futás során beállítja a {@code folderList} elemeit és törli a
+     * {@code fileList} tartalmát, hiba esetén pedig hibaüzenetet kapunk.
+     */
+
     public void loadFiles(){
         Task<List<StorageItem>> task = new Task<>() {
             @Override
@@ -163,6 +223,13 @@ public class FileController {
         thread.start();
     }
 
+    /**
+     * Ez a metódus valósítja meg, hogy a könyvtárszerkezetben a visszalépés működjön.
+     * Amennyiben a gyökérkönyvtárban van a felhasználó, azaz nem tud feljebb menni a
+     * a könyvtárstruktúrában, ekkor egy hibaüzenetet kap a felhasználó.
+     * Amennyiben a visszalépés megvalósítható, akkor az eddigi elérési útvonalakat tároló {@link Stack} elemből
+     * betölti az utolsó elemet és visszalép.
+     */
     @FXML
     private void goBack(){
         if(pathStack.isEmpty()){
@@ -179,19 +246,40 @@ public class FileController {
         }
     }
 
+    /**
+     * Kezeli a Google Drive fiókból történő kijelentkezést és a felület alaphelyzetbe állítását.
+     * Amennyiben létezik aktív {@link GoogleDriveManager} példány, a metódus meghívja annak
+     * {@link GoogleDriveManager#logout()} metódusát a munkamenet bontásához, majd {@code null}-ra
+     * állítja a {@code manager} referenciát, hogy egy későbbi visszaváltáskor új hitelesítési
+     * folyamat indulhasson el. Ezt követően visszaállítja a meghajtóválasztó menüben
+     * ({@code rootsMenu}) megjelenített nevet az alapértelmezett {@code "Google Drive"}
+     * feliratra, majd kiválasztja az első elérhető helyi meghajtót és frissíti a nézetet
+     * ({@link #onSelected()}).
+     */
+
     @FXML
     private void handleLogOut(){
-        manager.logout();
+        if (manager != null) {
+            manager.logout();
+            manager = null;
+        }
         Disk selected = rootsMenu.getSelectionModel().getSelectedItem();
-        if(selected.toString().contains("Google Drive")){
+        if (selected != null && selected.toString().contains("Google Drive")) {
             selected.setCostumeName("Google Drive");
         }
-        rootsMenu.getSelectionModel().select(0);
-        onSelected();
+        if (!rootsMenu.getItems().isEmpty()) {
+            rootsMenu.getSelectionModel().select(0);
+            onSelected();
+        }
     }
 
 
     //Műveletek
+
+    /**
+     * Megerősítő párbeszédablak megjelenítése után háttérszálon törli a kijelölt elemeket
+     * a {@link FileOperationService} segítségével, majd frissíti a nézetet ({@link #loadFiles()}).
+     */
 
     @FXML
     private void onDelete(){
@@ -211,6 +299,13 @@ public class FileController {
         });
     }
 
+    /**
+     * Bekéri egy párbeszédablakban az új nevet, majd ellenőrzi, hogy az átnevezendő elem egy mappa-e.
+     * Ez azért fontos, mert amennyiben nem mappa, akkor egy fájlt szeretnénk átnevezni, azonban itt a kiterjesztésre
+     * figyelni kell a fájl használhatóságának megtartása miatt.
+     * Amennyiben az új névben egy új kiterjesztés található, a felhasználónak meg kell erősíteni, hogy szeretne kiterjesztést változtatni.
+     * Ezután egy háttérszálon végrehajtja az átnevezést a {@link FileOperationService} segítségével.
+     */
     @FXML
     private void onRename() {
         StorageItem selected = folderList.getSelectionModel().getSelectedItem();
@@ -265,6 +360,12 @@ public class FileController {
         });
     }
 
+    /**
+     * Egy párbeszéd ablakban bekéri az új mappának a nevét. Ezt ellenőrzi, hogy a felhasználó
+     * adott-e meg nevet. Amennyiben igen, akkor az aktuális elérési útvonalon létrehoz egy új mappát, melynek beállítja
+     * a megadott nevet.
+     */
+
     @FXML
     private void onCreate(){
         TextInputDialog dialog = new TextInputDialog("Új mappa");
@@ -290,9 +391,40 @@ public class FileController {
 
 
     // --- Getterek a MainControllernek
+
+    /**
+     * Visszaadja a panelhez tartozó providert.
+     * @return az aktuális {@link StorageProvider} példány
+     */
     public StorageProvider getProvider() {return  provider;}
+
+    /**
+     * Visszaadja az aktuáliis elérési útvonal azonosítóját.
+     * @return az aktuális könyvtár azonosítója
+     */
     public String getCurrentPathId() {return  currentPathId;}
+
+    /**
+     * Visszaadja a kijelölt elemek listáját.
+     * @return a kijelölt {@link StorageItem} példányok listája
+     */
     public List<StorageItem> getSelectedItems() {return folderList.getSelectionModel().getSelectedItems();}
+
+    /**
+     * Visszaad egyetlen kijelölt elem adatait.
+     * @return egyetlen kijelölt elem adatai.
+     */
     public StorageItem getSelectedItem() {return fileList.getSelectionModel().getSelectedItem();}
 
+    /**
+     * A deletebutton getter metódusa
+     * @return a törlés {@link Button} komponense
+     */
+    public Button getDeleteButton() {return deleteButton;}
+
+    /**
+     * Beállítja a panelhez tartozó törlés gombot.
+     * @param deleteButton a beállítandó törlés {@link Button}
+     */
+    public void setDeleteButton(Button deleteButton) {this.deleteButton = deleteButton;}
 }
